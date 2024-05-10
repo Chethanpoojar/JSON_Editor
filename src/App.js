@@ -1,15 +1,15 @@
 import "./App.css";
-import ReactJson from "react-json-view";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Box, Button, Grid, Stack } from "@mui/material";
 import { json_object, fruit } from "./JSONdata";
 import { Editor } from "@monaco-editor/react";
+import JsonParser from "./Json_Parser";
+import EditableJSON from "./Json_Parser";
 
 function App() {
   const [code, setCode] = useState("");
   const [isValidJson, setIsValidJson] = useState(false);
-
-  console.log({ code });
+  const [editedJSON, setEditedJSON] = useState(json_object);
 
   const onChange = (newValue, e) => {
     setCode(newValue);
@@ -19,19 +19,6 @@ function App() {
     } catch (error) {
       setIsValidJson(false);
     }
-  };
-
-  useEffect(() => {
-    findKeys(code);
-  }, []);
-
-  const findKeys = (obj) => {
-    const values = Object.values(obj);
-    values.forEach(function (value) {
-      if (typeof value === "object") {
-        findKeys(value);
-      }
-    });
   };
 
   const beautifyJson = (code) => {
@@ -47,14 +34,14 @@ function App() {
 
   const downloadJson = (json) => {
     if (json) {
-      const blob = new Blob([json], {
+      const blob = new Blob([JSON.stringify(json, null, 2)], {
         type: "application/json",
       });
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-     const res =  window.prompt("Enter file name")
+      const res = window.prompt("Enter file name");
       a.download = `${res ?? "Updated_Json"}.json`;
       document.body.appendChild(a);
       a.click();
@@ -75,7 +62,7 @@ function App() {
       const content = e.target.result;
       try {
         const parsedJson = JSON.parse(content);
-        setCode(JSON.stringify(parsedJson, null, 2));
+        setEditedJSON(JSON.parse(JSON.stringify(parsedJson, null, 2)));
         setIsValidJson(true);
       } catch (error) {
         console.error("Error parsing JSON:", error);
@@ -119,46 +106,70 @@ function App() {
             </Button>
             <Button
               disabled={!isValidJson}
-              onClick={() => downloadJson(code)}
+              onClick={() => downloadJson(editedJSON)}
               variant="contained"
               color="secondary"
             >
               Export
             </Button>
-            <Button
+            {/* <Button
               disabled={!isValidJson}
-              onClick={() => beautifyJson(code)}
+              onClick={() => beautifyJson(editedJSON)}
               variant="contained"
             >
               Beautify
-            </Button>
+            </Button> */}
           </Stack>
         </Box>
 
         <Box flexGrow={1} overflow={"auto"}>
-          <Editor
+          {/* <JsonParser jsonData={data2} /> */}
+          <EditableJSON editedJSON={editedJSON} setEditedJSON={setEditedJSON} />
+          {/* <Editor
             height={"100%"}
             language="json"
             defaultValue={code}
             value={code}
             onChange={onChange}
-          />
+          /> */}
         </Box>
       </Box>
-
-      {/* <Box width={"50%"} height={"100vh"} overflow={"auto"}>
-        <ReactJson
-          src={json_object}
-          onEdit={(edit) => setCode(edit["updated_src"])}
-          onAdd={(add) => setCode(add["updated_src"])}
-          onDelete={(del) => setCode(del["updated_src"])}
-          quotesOnKeys={false}
-          name="JSON"
-          style={{ margin: "1rem 0rem 0rem 2rem" }}
-        />
-      </Box> */}
     </Box>
   );
 }
 
 export default App;
+
+const jsonData = {
+  name: "John",
+  age: 30,
+  address: {
+    street: "123 Main St",
+    city: "Anytown",
+    zipcode: "12345",
+  },
+  hobbies: ["Reading", "Gardening", "Cooking"],
+  key4: [{ a: "a", b: { b1: "b1" } }, { b: "b" }, { c: "c" }],
+  name2: "chethan",
+  data: ["a", "b", "c"],
+  obj: {
+    a1: {
+      key1: "value1 ",
+      key2: "value2",
+      key3: ["d", "e", "f"],
+      key4: {
+        key41: "value41",
+      },
+    },
+  },
+  obj2: {
+    a1: {
+      key1: "value1 ",
+      key2: "value2",
+      key3: ["d", "e", "f"],
+      key4: {
+        key41: "value41",
+      },
+    },
+  },
+};
