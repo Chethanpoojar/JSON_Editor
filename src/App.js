@@ -1,5 +1,5 @@
 import "./App.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Button, Grid, Stack } from "@mui/material";
 import { json_object, fruit } from "./JSONdata";
 import { Editor } from "@monaco-editor/react";
@@ -9,7 +9,11 @@ import EditableJSON from "./Json_Parser";
 function App() {
   const [code, setCode] = useState("");
   const [isValidJson, setIsValidJson] = useState(false);
-  const [editedJSON, setEditedJSON] = useState(json_object);
+  const [editedJSON, setEditedJSON] = useState(jsonData);
+
+  useEffect(() => {
+    setEditedJSON(editedJSON);
+  }, [editedJSON]);
 
   const onChange = (newValue, e) => {
     setCode(newValue);
@@ -105,7 +109,7 @@ function App() {
               Import File
             </Button>
             <Button
-              disabled={!isValidJson}
+              disabled={!editedJSON}
               onClick={() => downloadJson(editedJSON)}
               variant="contained"
               color="secondary"
@@ -123,8 +127,10 @@ function App() {
         </Box>
 
         <Box flexGrow={1} overflow={"auto"}>
+        <EditableJSON editedJSON={editedJSON} setEditedJSON={setEditedJSON} />
+        
           {/* <JsonParser jsonData={data2} /> */}
-          <EditableJSON editedJSON={editedJSON} setEditedJSON={setEditedJSON} />
+         
           {/* <Editor
             height={"100%"}
             language="json"
