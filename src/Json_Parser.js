@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   TextField,
   AccordionDetails,
@@ -16,46 +16,77 @@ import MuiAccordionSummary, {
 } from "@mui/material/AccordionSummary";
 import ArrowForwardIosSharpIcon from "@mui/icons-material/ArrowForwardIosSharp";
 
-const EditableJSON = ({ editedJSON, setEditedJSON }) => {
+const AccordionSummary2 = styled((props: AccordionSummaryProps) => (
+  <MuiAccordionSummary
+    expandIcon={<ArrowForwardIosSharpIcon sx={{ fontSize: "0.9rem" }} />}
+    {...props}
+  />
+))(({ theme }) => ({
+  backgroundColor:
+    theme.palette.mode === "dark"
+      ? "rgba(255, 255, 255, .05)"
+      : "rgba(0, 0, 0, .03)",
+  flexDirection: "row-reverse",
+  "& .MuiAccordionSummary-expandIconWrapper.Mui-expanded": {
+    transform: "rotate(90deg)",
+  },
+  "& .MuiAccordionSummary-content": {
+    marginLeft: theme.spacing(1),
+  },
+}));
 
-  const AccordionSummary2 = styled((props: AccordionSummaryProps) => (
-    <MuiAccordionSummary
-      expandIcon={<ArrowForwardIosSharpIcon sx={{ fontSize: "0.9rem" }} />}
-      {...props}
-    />
-  ))(({ theme }) => ({
-    backgroundColor:
-      theme.palette.mode === "dark"
-        ? "rgba(255, 255, 255, .05)"
-        : "rgba(0, 0, 0, .03)",
-    flexDirection: "row-reverse",
-    "& .MuiAccordionSummary-expandIconWrapper.Mui-expanded": {
-      transform: "rotate(90deg)",
-    },
-    "& .MuiAccordionSummary-content": {
-      marginLeft: theme.spacing(1),
-    },
-  }));
-
-  function updateJsonValue(obj, key, newValue) {
-    for (const [k, v] of Object.entries(obj)) {
-      if (k === key) {
-        obj[k] = newValue;
-      } else if (v && typeof v === "object") {
-        updateJsonValue(v, key, newValue);
-      }
+const updateJsonValue = (obj, key, newValue) => {
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === key) {
+      obj[k] = newValue;
+    } else if (v && typeof v === "object") {
+      updateJsonValue(v, key, newValue);
     }
-
-    return obj;
   }
+  return obj;
+};
+
+const EditableJSON = React.memo(({ editedJSON, setEditedJSON }) => {
+  const [state, setstate] = useState({ json: {}, key: "", value: "" });
+  console.log({ state });
+  const debounce = (func, delay) => {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  };
+
+  // useEffect(() => {
+  //   setstate({ json: {}, key: "", value: "" });
+  // }, [editedJSON]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleChange(state.json, state.key, state.value);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [state.value]);
 
   const handleChange = (json, key, value) => {
     const res = updateJsonValue(json, key, value);
-    console.log({ res });
-    setEditedJSON((prev) => ({
-      ...prev,
-      res,
-    }));
+    setEditedJSON((prev) => ({ ...prev, ...res }));
+    setstate({ json: {}, key: "", value: "" });
+  };
+
+  const handleArrayChange = (key, index, newValue) => {
+    setEditedJSON((prevJSON) => {
+      const newArray = [...prevJSON[key]];
+      if (index === null) {
+        newArray.push(newValue);
+      } else {
+        newArray.splice(index, 1);
+      }
+      return { ...prevJSON, [key]: newArray };
+    });
   };
 
   const renderField = (key, value) => {
@@ -69,8 +100,13 @@ const EditableJSON = ({ editedJSON, setEditedJSON }) => {
             <TextField
               size="small"
               type="number"
-              value={value}
-              onChange={(e) => handleChange(editedJSON, key, e.target.value)}
+              value={
+                state?.value !== "" && state.key === key ? state?.value : value
+              }
+              onChange={(e) => {
+                // handleChange(editedJSON, key, e.target.value);
+                setstate({ json: editedJSON, key: key, value: e.target.value });
+              }}
               variant="outlined"
             />
           </AccordionDetails>
@@ -85,8 +121,13 @@ const EditableJSON = ({ editedJSON, setEditedJSON }) => {
           <AccordionDetails>
             <TextField
               size="small"
-              value={value}
-              onChange={(e) => handleChange(editedJSON, key, e.target.value)}
+              value={
+                state?.value !== "" && state.key === key ? state?.value : value
+              }
+              onChange={(e) => {
+                // handleChange(editedJSON, key, e.target.value);
+                setstate({ json: editedJSON, key: key, value: e.target.value });
+              }}
               variant="outlined"
             />
           </AccordionDetails>
@@ -99,29 +140,31 @@ const EditableJSON = ({ editedJSON, setEditedJSON }) => {
             <Typography>{key}</Typography>
           </AccordionSummary2>
           <AccordionDetails>
-            <Box display={"flex"}>
-              {value.map((item, index) => {
-                if (typeof item === "object") {
-                  return (
-                    <>
-                      {Object.entries(item).map(([key, value]) => (
-                        <Grid item xs={12} key={key}>
-                          {renderField(key, value)}
-                        </Grid>
-                      ))}
-                    </>
-                  );
-                } else {
-                  return (
-                    <Chip
-                      key={index}
-                      label={item}
-                      onDelete={() => handleArrayChange(key, index)}
-                      variant="outlined"
-                    />
-                  );
-                }
-              })}
+            <Box display={"flex"} flexDirection="column" gap={1}>
+              {value.map((item, index) =>
+                typeof item === "object" ? (
+                  <Box
+                    key={index}
+                    display="flex"
+                    flexDirection="column"
+                    gap={1}
+                  >
+                    {Object.entries(item).map(([innerKey, innerValue]) => (
+                      <Grid item xs={12} key={innerKey}>
+                        {renderField(innerKey, innerValue)}
+                      </Grid>
+                    ))}
+                  </Box>
+                ) : (
+                  <Chip
+                  style={{width:100}}
+                    key={index}
+                    label={item}
+                    onDelete={() => handleArrayChange(key, index)}
+                    variant="outlined"
+                  />
+                )
+              )}
             </Box>
           </AccordionDetails>
         </Accordion>
@@ -140,21 +183,6 @@ const EditableJSON = ({ editedJSON, setEditedJSON }) => {
     }
   };
 
-  const handleArrayChange = (key, index, newValue) => {
-    setEditedJSON((prevJSON) => {
-      const newArray = [...prevJSON[key]];
-      if (index === null) {
-        newArray.push(newValue);
-      } else {
-        newArray.splice(index, 1);
-      }
-      return {
-        ...prevJSON,
-        [key]: newArray,
-      };
-    });
-  };
-
   return (
     <Grid container spacing={2}>
       {Object.entries(editedJSON).map(([key, value]) => (
@@ -162,13 +190,8 @@ const EditableJSON = ({ editedJSON, setEditedJSON }) => {
           {renderField(key, value)}
         </Grid>
       ))}
-      {/* <Grid item xs={12}>
-        <Button variant="contained" color="primary">
-          Save Changes
-        </Button>
-      </Grid> */}
     </Grid>
   );
-};
+});
 
 export default EditableJSON;
